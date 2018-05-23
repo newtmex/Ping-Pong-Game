@@ -157,6 +157,8 @@ var Ball = function (color){
     }
 }
 
+Ball.instances = [];//This will hold all the
+
 //Init Players
 player1 = new Player(1);
 player2 = new Player(2);
@@ -173,6 +175,12 @@ ball8 = new Ball('green');
 ball9 = new Ball('yellow');
 ball11 = new Ball('pink');
 
+function drawAll (){
+    /** Place the show() method and every draw instance here, so that they can
+     *  overwrite their previous state
+     */
+
+}
 window.onload = function(){
     const canvas = document.getElementById('gameMain');
     canvasContext = canvas.getContext('2d');
@@ -215,6 +223,6 @@ window.onload = function(){
         ball8.autoMove();        
         ball9.autoMove();        
         ball11.autoMove();          
-        console.log(ball1.speed)
+        console.log(Ball.instances)
     },1110)
 }

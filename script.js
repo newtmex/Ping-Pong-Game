@@ -1,132 +1,7 @@
-var canvasContext, ball, player1, player2, frameRate = 1000 / 7;
+var canvasContext, ball, player1, player2, frameRate = 1000 / 17;
 
 function random(start,end){//Returns a random number from start to end, both included
     return Math.floor(Math.random() * end) + start;
-}
-
-
-var Ball = function (name,color){
-    this.color = color;
-    this.name = name;
-    this.position = {
-        x: Math.floor(Math.random() * 790),
-        y: Math.floor(Math.random() * 590),
-        rad: 176,
-    }
-
-    this.directions = [,'pos','neg'];
-    //Set directions randomly
-    this.direction = {
-        x: this.directions[Math.floor(Math.random() * 2) + 1],
-        y: this.directions[Math.floor(Math.random() * 2) + 1]
-    }    
-
-    this.speed = Math.floor(Math.random() * 5) + 3
-    this.show = function (position){
-        if(position){
-            this.position = position;//Update
-
-            canvasContext.fillStyle = this.color;
-            canvasContext.beginPath()
-            canvasContext.arc(this.position.x,this.position.y,this.position.rad,0,Math.PI*2,true)
-            canvasContext.fill()
-            return
-        }
-        canvasContext.fillStyle = this.color;
-        canvasContext.beginPath()
-        canvasContext.arc(this.position.x,this.position.y,this.position.rad,0,Math.PI*2,true)
-        canvasContext.fill()
-    }
-
-    this.move = function (direction){//Direction will be an object with x and y properties be either neg or pos
-        var displacement = 4;
-        var position = this.position;//Clone the position property, this is done since the show() method will still use the previous value
-        //Chose the direction
-        if(direction){
-            switch(direction.x){//For x
-                case 'pos': position.x += displacement;
-                    break;
-                case 'neg': position.x -= displacement;
-                    break;
-                case 0: //Change nothing
-                    break;
-                default://Use the previous case
-                    (this.direction.x === 'pos') ? position.x += displacement : position.x -= displacement;
-            }
-            switch(direction.y){//For y
-                case 'pos': position.y += displacement;
-                    break;
-                case 'neg': position.y -= displacement;
-                    break;
-                case 0: //Change nothing
-                    break;
-                default://Use the previous case
-                    (this.direction.y === 'pos') ? position.y += displacement : position.y -= displacement;
-            }
-        }else{
-            (this.direction.x === 'pos') ? position.x += displacement : position.x -= displacement;
-            (this.direction.y === 'pos') ? position.y += displacement : position.y -= displacement;            
-        }
-
-        //Ensure that the position is not off canvas
-        //Update the position
-        this.show(position)
-    }
-
-    this.autoMove = function (){//Direction will be an object with x and y properties be either neg or pos
-        var displacement = this.speed;
-        var position = this.position;//Clone the position property, this is done since the show() method will still use the previous value
-        //Choose the direction
-            switch(this.direction.x){//For x
-                case 'pos': position.x += displacement;
-                    if(position.x + this.position.rad >= 800) this.direction.x = 'neg';//toggle direction
-                    break;
-                case 'neg': position.x -= displacement;
-                    if(position.x - this.position.rad <= 0) this.direction.x = 'pos';//toggle direction
-                    break;
-                default://Use the previous case
-                    (this.direction.x === 'pos') ? position.x += displacement : position.x -= displacement;
-            }
-            switch(this.direction.y){//For y
-                case 'pos': position.y += displacement;
-                    if(position.y + this.position.rad >= 600) this.direction.y = 'neg';//toggle direction
-                    break;
-                case 'neg': position.y -= displacement;
-                    if(position.y - this.position.rad <= 0) this.direction.y = 'pos';//toggle direction
-                    break;
-                default://Use the previous case
-                    (this.direction.y === 'pos') ? position.y += displacement : position.y -= displacement;
-            }
-        //Update the position
-        this.show(position)
-    }
-}
-
-Ball.instances = {};//This will hold all the balls formed
-Object.defineProperties(Ball.instances,{
-    length: {
-        value: 0,
-        writable: true
-    },
-    forEach: {
-        value: function(f){
-            for(var ball in this) f.call(this,this[ball])
-        },
-    },
-})
-
-function addBall(name,color){
-    Ball.instances[name] = new Ball(name,color);//Add the member
-    Ball.instances.length++;//Increase the length
-}
-
-
-//Init Balls
-const colors = [,'white','blue','green','yellow','pink']
-var totalBalls = 1;
-for(var i = 1;i <= totalBalls; i++){
-    let ballName = 'ball' + i;
-   addBall(ballName,colors[random(1,colors.length - 1)]);
 }
 
 window.onload = function(){
@@ -134,63 +9,85 @@ window.onload = function(){
     const canvas = document.getElementById('gameMain');
     canvasContext = canvas.getContext('2d');
 
+    function drawCanvas(){
+        canvasContext.fillStyle = 'black';
+        canvasContext.fillRect(0,0,canvas.width,canvas.height);
+    }
     //Object to hold players behaviours and state
     var Player = function(id){
 
+        //Identification props
+        this.id = id;
+        this.color = 'red';
+        //Physical properties
         this.size = {
             height: 190,
             width: 19
         }
-
+        this.speed = 20;
         if(id === 2) {
             this.position = {
                 x: canvas.width - this.size.width,
                 y: 210
             }
         }
-
         if(id === 1) {
             this.position = {
                 x: 0,
                 y: 210
             }
         }
-
+        /*
+                this.occupiedArea = {
+                    x
+                }
+        */
         this.directions = [,'up','down']
-        this.direction = this.directions[random(1,2)];
-
-        this.show = function (){
-            canvasContext.fillStyle = 'red';
-            canvasContext.fillRect(this.position.x,this.position.y,this.size.width,this.size.height)
+        this.direction = this.directions[random(1,2)];//either up or down
+        //Perception
+        this.touched = {
+            bool: false,//This records the state if he has touched anything...wall or balls
+            object: [],//Array of all the object this player has touched
         }
+        //Behaviours
+        /** Displays this player on the canvas
+         * @param [position] => Object with x and y cordinates
+         */
+        this.show = function (position){
+            if(position && typeof position == 'object'){
+                this.position = position;
+            }
 
-        this.move = function (direction){
-            var y = 4;
-            //Change the color of the previous draw to the background
-            canvasContext.fillStyle = 'black';
+            //Adjust the postion so the player will not go off the screen, and change his direction if necessary
+            if(this.position.y <= 0){
+                this.position.y = 0;//Adjust position
+                this.direction = 'down';//Adjust the direction
+            }
+            if(this.position.y >= canvas.height - this.size.height){
+                this.position.y = canvas.height - this.size.height;//Adjust position
+                this.direction = 'up';//Adjust the direction
+            }
+
+            canvasContext.fillStyle = this.color;
             canvasContext.fillRect(this.position.x,this.position.y,this.size.width,this.size.height);
-
-            if(direction === 'up') y *= -1;//Reverse the direction
-
-            //Update the position
-            this.position.y += y;//Change the y coordinate
-            canvasContext.fillStyle = 'red';
-            canvasContext.fillRect(this.position.x,this.position.y,this.size.width,this.size.height)
         }
 
-        this.autoMove = function (y){
-            var y = y || 20;
+        this.move = function (direction,speed){
+            if(speed && typeof speed == 'number' && speed > 0){
+                this.speed += speed;
+            }
+            if(direction && typeof direction == 'string' && direction != this.direction){
+                this.direction = direction;//Reverse the direction
+            }
 
-            if(this.position.y <= 0) this.direction = 'down';//Reverse the direction
-            if(this.position.y >= canvas.height - this.size.height) this.direction = 'up';//Reverse the direction
+            //Update the position based on the direction
+            if(this.direction === 'up') this.position.y -= Math.abs(this.speed);
+            if(this.direction === 'down') this.position.y += Math.abs(this.speed);
 
-            if(this.direction === 'up') this.position.y -= y;
-            if(this.direction === 'down') this.position.y += y;
-            //Update the position
-            canvasContext.fillStyle = 'red';
-            canvasContext.fillRect(this.position.x,this.position.y,this.size.width,this.size.height)
+            this.show();
         }
 
+        //Take record of all instances
         Player.instances.push(this)
     }
     Player.instances = [];
@@ -199,15 +96,231 @@ window.onload = function(){
     player1 = new Player(1);
     player2 = new Player(2);
 
+    var Ball = function (name,color){
+        this.color = color;
+        this.name = name;
+        this.position = {
+            rad: 8,
+            x: random(0,canvas.width),
+            y: random(0,canvas.height),
+        }
+
+        this.directions = [,'inc','red'];
+        //Set directions randomly
+        this.direction = {
+            x: this.directions[Math.floor(Math.random() * 2) + 1],
+            y: this.directions[Math.floor(Math.random() * 2) + 1]
+        }    
+
+        this.speed = Math.floor(Math.random() * 5) + 3;
+        this.decelerate = function(){
+            if(this.speed > 0){
+                this.speed -= Math.random() * 3;
+                this.speed = Math.abs(this.speed);//Ensure that it will not be negative
+            }
+        }
+        this.accelerate = function (speed){
+            if(speed && typeof speed == 'number' && speed > 0){
+                this.speed += speed;
+            }
+        }
+        this.show = function (position){
+            if(position && typeof position == 'object'){
+                this.position = position;//Update
+            }
+
+            //Adjust the postion so the player will not go off the screen, and change his direction if necessary
+            if(this.position.x <= this.position.rad){
+                this.position.x = this.position.rad;//Adjust position
+                this.direction.x = 'inc';//Adjust the direction
+            }
+            if(this.position.x >= canvas.width - this.position.rad){
+                this.position.x = canvas.width - this.position.rad;//Adjust position
+                this.direction.x = 'red';//Adjust the direction
+            }
+            if(this.position.y <= this.position.rad){
+                this.position.y = this.position.rad;//Adjust position
+                this.direction.y = 'inc';//Adjust the direction
+            }
+            if(this.position.y >= canvas.height - this.position.rad){
+                this.position.y = canvas.height - this.position.rad;//Adjust position
+                this.direction.y = 'red';//Adjust the direction
+            }
+            
+            canvasContext.fillStyle = this.color;
+            canvasContext.beginPath()
+            canvasContext.arc(this.position.x,this.position.y,this.position.rad,0,Math.PI*2,true)
+            canvasContext.fill()
+        }
+
+        this.move = function (direction){//Direction will be an object with x and y properties be either neg or pos
+            var displacement = this.speed;
+            var position = this.position;//Clone the position property, this is done since the show() method will still use the previous value
+            //Chose the direction
+            if(direction){
+                switch(direction.x){//For x
+                    case 'inc': position.x += displacement;
+                        break;
+                    case 'red': position.x -= displacement;
+                        break;
+                    case 0: //Change nothing
+                        break;
+                    default://Use the previous case
+                        (this.direction.x === 'inc') ? position.x += displacement : position.x -= displacement;
+                }
+                switch(direction.y){//For y
+                    case 'inc': position.y += displacement;
+                        break;
+                    case 'red': position.y -= displacement;
+                        break;
+                    case 0: //Change nothing
+                        break;
+                    default://Use the previous case
+                        (this.direction.y === 'inc') ? position.y += displacement : position.y -= displacement;
+                }
+            }else{
+                (this.direction.x === 'inc') ? position.x += displacement : position.x -= displacement;
+                (this.direction.y === 'inc') ? position.y += displacement : position.y -= displacement;            
+            }
+
+            //Ensure that the position is not off canvas
+            //Update the position
+            this.show(position)
+        }
+
+        this.autoMove = function (){//Direction will be an object with x and y properties be either neg or pos
+            var displacement = this.speed;
+            var position = this.position;//Clone the position property, this is done since the show() method will still use the previous value
+            
+            /**
+             * Choose the direction
+             */
+            var directionChanged = false;
+
+            //Relative to players
+            if(!directionChanged){
+                var player1 = Player.instances[0];
+                var player2 = Player.instances[1];
+                var touchedPlayer = {
+                    bool: false,
+                    who: {}
+                }
+                var closeToPlayer = false
+                //Check if this is moving relatively to the right or to the left at this time, to 
+                //determine which player it will interact with
+                if(this.direction.x === 'inc'){//Moving right
+                    //Check if it is close to player
+                    var distanceFromPlayer = (canvas.width - player2.size.width) - (this.position.x + this.position.rad);
+                    if(distanceFromPlayer <= 0){
+                        if(player2.position.y <= this.position.y && this.position.y <= (player2.position.y + player2.size.height)){
+                            touchedPlayer.bool = true;
+                            touchedPlayer.who = player2;
+                        }
+                    }
+                    if(touchedPlayer.bool){
+                        this.direction.x = 'red';//toggle direction   
+                        directionChanged = true;
+                    }
+                }else if(this.direction.x === 'red'){//Moving left
+                    //Check if it is close to player
+                    var distanceFromPlayer = (this.position.x - this.position.rad) - player1.size.width;
+                    if(distanceFromPlayer <= 0){
+                        if(player1.position.y <= this.position.y && this.position.y <= (player1.position.y + player1.size.height)){
+                            touchedPlayer.bool = true;
+                            touchedPlayer.who = player1;
+                        }                   
+                    }
+                    if(touchedPlayer.bool){
+                        this.direction.x = 'inc';//toggle direction   
+                        directionChanged = true;  
+                    }
+                }
+
+                if(touchedPlayer.bool){
+                    this.accelerate(touchedPlayer.who.speed % this.speed);
+                    
+                }
+            }
+            //Relative to screen
+            if(!directionChanged){
+                switch(this.direction.x){//For x
+                    case 'inc': position.x += displacement;
+                        if(position.x + this.position.rad >= 800){//If it hits a wall
+                            this.direction.x = 'red';//toggle direction
+                            this.decelerate()//Any time a ball hits the wall its speed should reduce
+                        }
+                        break;
+                    case 'red': position.x -= displacement;
+                        if(position.x - this.position.rad <= 0){//If it hits a wall
+                            this.direction.x = 'inc';//toggle direction
+                            this.decelerate()//Any time a ball hits the wall its speed should reduce
+                        }
+                        break;
+                    default://Use the previous case
+                        (this.direction.x === 'inc') ? position.x += displacement : position.x -= displacement;
+                }
+                switch(this.direction.y){//For y
+                    case 'inc': position.y += displacement;
+                        if(position.y + this.position.rad >= 600){//If it hits a wall
+                            this.direction.y = 'red';//toggle direction
+                            this.decelerate()//Any time a ball hits the wall its speed should reduce
+                        }
+                        break;
+                    case 'red': position.y -= displacement;
+                        if(position.y - this.position.rad <= 0){//If it hits a wall
+                            this.direction.y = 'inc';//toggle direction
+                            this.decelerate()//Any time a ball hits the wall its speed should reduce
+                        }
+                        break;
+                    default://Use the previous case
+                        (this.direction.y === 'inc') ? position.y += displacement : position.y -= displacement;
+                }
+            }
+            
+            //Update the position
+            this.show(position)
+        }
+    }
+    Ball.instances = {};//This will hold all the balls formed
+    Object.defineProperties(Ball.instances,{
+        length: {
+            value: 0,
+            writable: true
+        },
+        forEach: {
+            value: function(f){
+                for(var ball in this) f.call(this,this[ball])
+            },
+        },
+    })
+
+    function addBall(name,color){
+        Ball.instances[name] = new Ball(name,color);//Add the member
+        Ball.instances.length++;//Increase the length
+    }
+
+
+    //Init Balls
+    const colors = [,'white','blue','green','yellow','pink']
+    var totalBalls = 1;
+    for(var i = 1;i <= totalBalls; i++){
+        let ballName = 'ball' + i;
+    addBall(ballName,colors[random(1,colors.length - 1)]);
+    }
+   
+    function addRandomBall(){
+        var ballIndex = Ball.instances.length + 1;
+        var ballName = 'ball' + ballIndex;
+        addBall(ballName,colors[random(1,colors.length - 1)]); 
+    }
+
     function drawAll (){
         /** Place the show() method and every draw instance here, so that they can
          *  overwrite their previous state
          */
     
         //Draw the screen
-        canvasContext.fillStyle = 'black';
-        canvasContext.fillRect(0,0,canvas.width,canvas.height);
-
+        drawCanvas()
         //Draw the balls˝
         Ball.instances.forEach((ball)=>{
             ball.autoMove()
@@ -215,10 +328,10 @@ window.onload = function(){
             
         //Draw the players
         function playerSpeed(){
-            return random(1,20);
+            return 3;
         }
         Player.instances.forEach((player)=>{
-            player.autoMove(playerSpeed())
+            player.move()
         })
         
     }
@@ -243,25 +356,22 @@ window.onload = function(){
             player.show()
         })
     }
-/*
-    var direction = [,'up','down'];
+    /*
+        var direction = [,'up','down'];
 
-    player1.direction = direction[Math.floor(Math.random() * 2) + 1]
-    player2.direction = direction[Math.floor(Math.random() * 2) + 1]
-*/
+        player1.direction = direction[Math.floor(Math.random() * 2) + 1]
+        player2.direction = direction[Math.floor(Math.random() * 2) + 1]
+    */
     var draw = setInterval(function(){
         drawAll();          
     },frameRate)
 
     document.getElementById('moveBalls').addEventListener('click',()=>moveBalls(),true);
-    document.getElementById('moveBallsUp').addEventListener('click',()=>moveBalls({x:0,y:'pos'}),true);
-    document.getElementById('moveBallsDown').addEventListener('click',()=>moveBalls({x:0,y:'neg'}));
+    document.getElementById('moveBallsUp').addEventListener('click',()=>moveBalls({x:0,y:'red'}),true);
+    document.getElementById('moveBallsDown').addEventListener('click',()=>moveBalls({x:0,y:'inc'}));
+
+    document.getElementById('addRandomBall').addEventListener('click',()=>addRandomBall(),true);
 }
 
-    
-function addRandomBall(){
-    var ballIndex = Ball.instances.length + 1;
-    var ballName = 'ball' + ballIndex;
-    addBall(ballName,colors[random(1,colors.length - 1)]); 
-}
+ 
 

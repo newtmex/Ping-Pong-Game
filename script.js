@@ -1,5 +1,12 @@
 var canvasContext, ball, player1, player2, frameRate = 1000 / 17;
-
+// Convert [x,y] coordinates to [r,theta] polar coordinates
+function polar(x,y) {
+    return [Math.sqrt(x*x+y*y), Math.atan2(y,x)];
+}
+// Convert polar to Cartesian coordinates
+function cartesian(r,theta) {
+    return [r*Math.cos(theta), r*Math.sin(theta)];
+}
 function random(start,end){//Returns a random number from start to end, both included
     return Math.floor(Math.random() * end) + start;
 }
@@ -8,6 +15,10 @@ window.onload = function(){
 
     const canvas = document.getElementById('gameMain');
     canvasContext = canvas.getContext('2d');
+    const movement = document.getElementById('movement');
+    movementContext = movement.getContext('2d');
+    movementContext.fillStyle = 'black';
+    movementContext.fillRect(0,0,canvas.width,canvas.height);
 
     function drawCanvas(){
         canvasContext.fillStyle = 'black';
@@ -100,12 +111,16 @@ window.onload = function(){
         this.color = color;
         this.name = name;
         this.position = {
-            rad: 8,
+            rad: 118,
             x: random(0,canvas.width),
             y: random(0,canvas.height),
         }
-
-        this.directions = [,'inc','red'];
+        //Perception
+        this.touched = {
+            bool: false,//This records the state if he has touched anything...wall or balls
+            objects: [],//Array of all the object this player has touched
+        }
+        this.directions = [,'inc','red'];//increase or reduce
         //Set directions randomly
         this.direction = {
             x: this.directions[Math.floor(Math.random() * 2) + 1],
@@ -151,6 +166,13 @@ window.onload = function(){
             canvasContext.beginPath()
             canvasContext.arc(this.position.x,this.position.y,this.position.rad,0,Math.PI*2,true)
             canvasContext.fill()
+
+            console.log((function(d){
+                if(d.x == 'inc' && d.y == 'inc') return 'rightDown'
+                if(d.x == 'inc' && d.y == 'red') return 'rightUp'
+                if(d.x == 'red' && d.y == 'red') return 'leftUp'
+                if(d.x == 'red' && d.y == 'inc') return 'leftDown'
+            }(this.direction)),polar(this.position.x,this.position.y))
         }
 
         this.move = function (direction){//Direction will be an object with x and y properties be either neg or pos
@@ -323,7 +345,7 @@ window.onload = function(){
         drawCanvas()
         //Draw the balls˝
         Ball.instances.forEach((ball)=>{
-            ball.autoMove()
+            ball.move()
         });
             
         //Draw the players

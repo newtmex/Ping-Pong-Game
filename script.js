@@ -111,9 +111,11 @@ window.onload = function(){
         this.color = color;
         this.name = name;
         this.position = {
-            rad: 118,
-            x: random(0,canvas.width),
-            y: random(0,canvas.height),
+            rad: 13,
+            x1: random(0,canvas.width),
+            y1: random(0,canvas.height),
+            x2: random(0,canvas.width),
+            y2: random(0,canvas.height),
         }
         //Perception
         this.touched = {
@@ -123,6 +125,7 @@ window.onload = function(){
         this.directions = [,'inc','red'];//increase or reduce
         //Set directions randomly
         this.direction = {
+            theta: Math.random() * Math.PI * 2,
             x: this.directions[Math.floor(Math.random() * 2) + 1],
             y: this.directions[Math.floor(Math.random() * 2) + 1]
         }    
@@ -145,26 +148,26 @@ window.onload = function(){
             }
 
             //Adjust the postion so the player will not go off the screen, and change his direction if necessary
-            if(this.position.x <= this.position.rad){
-                this.position.x = this.position.rad;//Adjust position
+            if(this.position.x2 <= this.position.rad){
+                this.position.x2 = this.position.rad;//Adjust position
                 this.direction.x = 'inc';//Adjust the direction
             }
-            if(this.position.x >= canvas.width - this.position.rad){
-                this.position.x = canvas.width - this.position.rad;//Adjust position
+            if(this.position.x2 >= canvas.width - this.position.rad){
+                this.position.x2 = canvas.width - this.position.rad;//Adjust position
                 this.direction.x = 'red';//Adjust the direction
             }
-            if(this.position.y <= this.position.rad){
-                this.position.y = this.position.rad;//Adjust position
+            if(this.position.y2 <= this.position.rad){
+                this.position.y2 = this.position.rad;//Adjust position
                 this.direction.y = 'inc';//Adjust the direction
             }
-            if(this.position.y >= canvas.height - this.position.rad){
-                this.position.y = canvas.height - this.position.rad;//Adjust position
+            if(this.position.y2 >= canvas.height - this.position.rad){
+                this.position.y2 = canvas.height - this.position.rad;//Adjust position
                 this.direction.y = 'red';//Adjust the direction
             }
             
             canvasContext.fillStyle = this.color;
             canvasContext.beginPath()
-            canvasContext.arc(this.position.x,this.position.y,this.position.rad,0,Math.PI*2,true)
+            canvasContext.arc(this.position.x2,this.position.y2,this.position.rad,0,Math.PI*2,true)
             canvasContext.fill()
 
             console.log((function(d){
@@ -172,37 +175,70 @@ window.onload = function(){
                 if(d.x == 'inc' && d.y == 'red') return 'rightUp'
                 if(d.x == 'red' && d.y == 'red') return 'leftUp'
                 if(d.x == 'red' && d.y == 'inc') return 'leftDown'
-            }(this.direction)),polar(this.position.x,this.position.y))
+            }(this.direction)),this.direction.theta)
         }
 
         this.move = function (direction){//Direction will be an object with x and y properties be either neg or pos
-            var displacement = this.speed;
+            var [dispX,dispY] = cartesian(this.position.rad + this.speed, this.direction.theta);//Calculate how far it should move on both cordinate based on the three variablesv
+            console.log(dispX,dispY);
             var position = this.position;//Clone the position property, this is done since the show() method will still use the previous value
             //Chose the direction
             if(direction){
                 switch(direction.x){//For x
-                    case 'inc': position.x += displacement;
+                    case 'inc':
+                        position.x1 = position.x2;//Update previous  x cordinate
+                        position.x2 += Math.abs(dispX);//Update current x cordinate
                         break;
-                    case 'red': position.x -= displacement;
+                    case 'red':
+                        position.x1 = position.x2;//Update previous  x cordinate
+                        position.x2 -= Math.abs(dispX);//Update current x cordinate
                         break;
                     case 0: //Change nothing
                         break;
                     default://Use the previous case
-                        (this.direction.x === 'inc') ? position.x += displacement : position.x -= displacement;
+                        if(this.direction.x === 'inc'){
+                            position.x1 = position.x2;//Update previous  x cordinate
+                            position.x2 += Math.abs(dispX);//Update current x cordinate
+                        }else{
+                            position.x1 = position.x2;//Update previous  x cordinate
+                            position.x2 -= Math.abs(dispX);//Update current x cordinate
+                        }
                 }
                 switch(direction.y){//For y
-                    case 'inc': position.y += displacement;
+                    case 'inc':
+                        position.y1 = position.y2;//Update previous  x cordinate
+                        position.y2 += Math.abs(dispY);//Update current x cordinate
                         break;
-                    case 'red': position.y -= displacement;
+                    case 'red':
+                        position.y1 = position.y2;//Update previous  x cordinate
+                        position.y2 -= Math.abs(dispY);//Update current x cordinate
                         break;
                     case 0: //Change nothing
                         break;
                     default://Use the previous case
-                        (this.direction.y === 'inc') ? position.y += displacement : position.y -= displacement;
+                        if(this.direction.y === 'inc'){
+                            position.y1 = position.y2;//Update previous  x cordinate
+                            position.y2 += Math.abs(dispY);//Update current x cordinate
+                        }else{
+                            position.y1 = position.y2;//Update previous  x cordinate
+                            position.y2 -= Math.abs(dispY);//Update current x cordinate
+                        }
                 }
             }else{
-                (this.direction.x === 'inc') ? position.x += displacement : position.x -= displacement;
-                (this.direction.y === 'inc') ? position.y += displacement : position.y -= displacement;            
+                if(this.direction.x === 'inc'){
+                    position.x1 = position.x2;//Update previous  x cordinate
+                    position.x2 += Math.abs(dispX);//Update current x cordinate
+                }else{
+                    position.x1 = position.x2;//Update previous  x cordinate
+                    position.x2 -= Math.abs(dispX);//Update current x cordinate
+                }
+                if(this.direction.y === 'inc'){
+                    position.y1 = position.y2;//Update previous  x cordinate
+                    position.y2 += Math.abs(dispY);//Update current x cordinate
+                }else{
+                    position.y1 = position.y2;//Update previous  x cordinate
+                    position.y2 -= Math.abs(dispY);//Update current x cordinate
+                }        
             }
 
             //Ensure that the position is not off canvas

@@ -129,7 +129,10 @@ window.onload = function(){
             x: this.directions[Math.floor(Math.random() * 2) + 1],
             y: this.directions[Math.floor(Math.random() * 2) + 1]
         }    
-
+        this.calcTheta = function (){
+            var adj = Math.abs(this.position.x2 - this.position.x1), opp = Math.abs(this.position.y2 - this.position.y1);
+            console.log(adj,opp)//this.direction.theta += (Math.PI * Math.tan(opp/adj)) / 180;
+        }
         this.speed = Math.floor(Math.random() * 5) + 3;
         this.decelerate = function(){
             if(this.speed > 0){
@@ -169,13 +172,13 @@ window.onload = function(){
             canvasContext.beginPath()
             canvasContext.arc(this.position.x2,this.position.y2,this.position.rad,0,Math.PI*2,true)
             canvasContext.fill()
-
+            this.calcTheta()
             console.log((function(d){
                 if(d.x == 'inc' && d.y == 'inc') return 'rightDown'
                 if(d.x == 'inc' && d.y == 'red') return 'rightUp'
                 if(d.x == 'red' && d.y == 'red') return 'leftUp'
                 if(d.x == 'red' && d.y == 'inc') return 'leftDown'
-            }(this.direction)),this.direction.theta)
+            }(this.direction)))
         }
 
         this.move = function (direction){//Direction will be an object with x and y properties be either neg or pos

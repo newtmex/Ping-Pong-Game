@@ -131,7 +131,7 @@ window.onload = function(){
         }    
         this.calcTheta = function (){
             var adj = Math.abs(this.position.x2 - this.position.x1), opp = Math.abs(this.position.y2 - this.position.y1);
-            console.log(adj,opp)//this.direction.theta += (Math.PI * Math.tan(opp/adj)) / 180;
+            console.log('adj,opp')//this.direction.theta += (Math.PI * Math.tan(opp/adj)) / 180;
         }
         this.speed = Math.floor(Math.random() * 5) + 3;
         this.decelerate = function(){

@@ -205,7 +205,6 @@ window.onload = function(){
                     bool: false,
                     who: {}
                 }
-                var closeToPlayer = false
                 //Check if this is moving relatively to the right or to the left at this time, to 
                 //determine which player it will interact with
                 if(this.direction.x === 'inc'){//Moving right

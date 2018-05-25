@@ -32,8 +32,8 @@ window.onload = function(){
         this.color = 'red';
         //Physical properties
         this.size = {
-            height: 190,
-            width: 19
+            height: 70,
+            width: 9
         }
         this.speed = 20;
         if(id === 2) {
@@ -112,10 +112,10 @@ window.onload = function(){
         this.name = name;
         this.position = {
             rad: 13,
-            x1: random(0,canvas.width),
-            y1: random(0,canvas.height),
-            x2: random(0,canvas.width),
-            y2: random(0,canvas.height),
+            x1: 13,//random(0,canvas.width),
+            y1: 13,//random(0,canvas.height),
+            x2: 26,//random(0,canvas.width),
+            y2: 26,//random(0,canvas.height),
         }
         //Perception
         this.touched = {
@@ -125,19 +125,22 @@ window.onload = function(){
         this.directions = [,'inc','red'];//increase or reduce
         //Set directions randomly
         this.direction = {
-            theta: 0,//Math.random() * Math.PI * 2,
+            theta: Math.random() * Math.PI * 2 *1111,
             x: this.directions[Math.floor(Math.random() * 2) + 1],
             y: this.directions[Math.floor(Math.random() * 2) + 1]
         }    
         this.calcTheta = function (){
-            var adj = Math.abs(this.position.x2 - this.position.x1), opp = Math.abs(this.position.y2 - this.position.y1);
-            console.log('adj,opp')//this.direction.theta += (Math.PI * Math.tan(opp/adj)) / 180;
+            var adj = Math.abs(this.position.x2 - this.position.x1),
+             opp = Math.abs(this.position.y2 - this.position.y1), 
+             hyp = this.position.rad + this.speed;
+            this.direction.theta = Math.atan2(this.position.y2,this.position.x2);
+            console.log(this.direction.theta)
         }
-        this.speed = Math.floor(Math.random() * 5) + 3;
+        this.speed = 21//Math.floor(Math.random() * 5) + 3;
         this.decelerate = function(){
             if(this.speed > 0){
-                this.speed -= Math.random() * 3;
-                this.speed = Math.abs(this.speed);//Ensure that it will not be negative
+                this.speed -= 9;
+                this.speed = (this.speed < 0) ? 0 : this.speed;//Ensure that it will not be negative
             }
         }
         this.accelerate = function (speed){
@@ -146,6 +149,7 @@ window.onload = function(){
             }
         }
         this.show = function (position){
+            console.log(this.speed,this.direction.theta)
             if(position && typeof position == 'object'){
                 this.position = position;//Update
             }
@@ -169,6 +173,8 @@ window.onload = function(){
                     var distanceFromPlayer = (canvas.width - player2.size.width) - (this.position.x2 + this.position.rad);
                     if(distanceFromPlayer <= 0){
                         if(player2.position.y <= this.position.y2 && this.position.y2 <= (player2.position.y + player2.size.height)){
+                            position.x1 = position.x2;//Update previous x cordinate
+                            position.x2 = (canvas.width - player2.size.width) - this.position.rad;//Adjust position
                             touchedPlayer.bool = true;
                             touchedPlayer.who = player2;
                         }
@@ -182,9 +188,10 @@ window.onload = function(){
                     var distanceFromPlayer = (this.position.x2 - this.position.rad) - player1.size.width;
                     
                     if(distanceFromPlayer <= 0){
-                    console.log(player1.position.y, this.position.y2, (player1.position.y + player1.size.height),player1.position.y <= this.position.y2 && this.position.y <= (player1.position.y + player1.size.height))
-                    if(player1.position.y <= this.position.y2 && this.position.y <= (player1.position.y + player1.size.height)){
-                            touchedPlayer.bool = true;
+                    if(player1.position.y <= this.position.y2 && this.position.y2 <= (player1.position.y + player1.size.height)){
+                        position.x1 = position.x2;//Update previous x cordinate
+                        position.x2 = player1.size.width + this.position.rad;//Adjust position
+                        touchedPlayer.bool = true;
                             touchedPlayer.who = player1;
                         }                   
                     }
@@ -195,29 +202,38 @@ window.onload = function(){
                 }
 
                 if(touchedPlayer.bool){
-                    console.log('Toched side ' + touchedPlayer.who.id)
-                    this.accelerate(touchedPlayer.who.speed % this.speed);
+                    this.accelerate(touchedPlayer.who.speed);
                 }
             }
             //Relative to screen
             if(!directionChanged){//Adjust the postion so the player will not go off the screen, and change his direction if necessary
                 if(this.position.x2 <= this.position.rad){
                     this.position.x2 = this.position.rad;//Adjust position
+                    directionChanged = true;  
+                    this.decelerate()//Any time a ball hits the wall its speed should reduce
                     this.direction.x = 'inc';//Adjust the direction
                 }
                 if(this.position.x2 >= canvas.width - this.position.rad){
                     this.position.x2 = canvas.width - this.position.rad;//Adjust position
+                    directionChanged = true;  
+                    this.decelerate()//Any time a ball hits the wall its speed should reduce
                     this.direction.x = 'red';//Adjust the direction
                 }
                 if(this.position.y2 <= this.position.rad){
                     this.position.y2 = this.position.rad;//Adjust position
+                    directionChanged = true;  
+                    this.decelerate()//Any time a ball hits the wall its speed should reduce
                     this.direction.y = 'inc';//Adjust the direction
                 }
                 if(this.position.y2 >= canvas.height - this.position.rad){
                     this.position.y2 = canvas.height - this.position.rad;//Adjust position
+                    directionChanged = true;  
+                    this.decelerate()//Any time a ball hits the wall its speed should reduce
                     this.direction.y = 'red';//Adjust the direction
                 }
             }      
+
+            if(directionChanged) this.calcTheta();
             canvasContext.fillStyle = this.color;
             canvasContext.beginPath()
             canvasContext.arc(this.position.x2,this.position.y2,this.position.rad,0,Math.PI*2,true)

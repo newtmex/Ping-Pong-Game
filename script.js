@@ -8,7 +8,7 @@ function cartesian(r,theta) {
     return [r*Math.cos(theta), r*Math.sin(theta)];
 }
 function random(start,end){//Returns a random number from start to end, both included
-    return Math.floor(Math.random() * end) + start;
+    return Math.floor(Math.random() * (end - start + 1)) + start;
 }
 
 window.onload = function(){
@@ -111,7 +111,7 @@ window.onload = function(){
         this.color = color;
         this.name = name;
         this.position = {
-            rad: 13,
+            rad: random(9,13),
             x1: 13,//random(0,canvas.width),
             y1: 13,//random(0,canvas.height),
             x2: 26,//random(0,canvas.width),
@@ -134,7 +134,6 @@ window.onload = function(){
              opp = Math.abs(this.position.y2 - this.position.y1), 
              hyp = this.position.rad + this.speed;
             this.direction.theta = Math.atan2(this.position.y2,this.position.x2);
-            console.log(this.direction.theta)
         }
         this.speed = 21//Math.floor(Math.random() * 5) + 3;
         this.decelerate = function(){

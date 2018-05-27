@@ -1,4 +1,5 @@
-var canvasContext, ball, player1, player2, frameRate = 1000 / 17;
+var canvasContext, ball, player1, player2, framesPerSec = 30;
+
 // Convert [x,y] coordinates to [r,theta] polar coordinates
 function polar(x,y) {
     return [Math.sqrt(x*x+y*y), Math.atan2(y,x)];
@@ -10,7 +11,9 @@ function cartesian(r,theta) {
 function random(start,end){//Returns a random number from start to end, both included
     return Math.floor(Math.random() * (end - start + 1)) + start;
 }
-
+Array.prototype.randItem = function (){
+    return this[random(0,this.length - 1)]
+}
 window.onload = function(){
 
     const canvas = document.getElementById('gameMain');
@@ -53,8 +56,8 @@ window.onload = function(){
                     x
                 }
         */
-        this.directions = [,'up','down']
-        this.direction = this.directions[random(1,2)];//either up or down
+        this.directions = ['up','down']
+        this.direction = this.directions.randItem();//either up or down
         //Perception
         this.touched = {
             bool: false,//This records the state if he has touched anything...wall or balls
@@ -83,12 +86,23 @@ window.onload = function(){
             canvasContext.fillRect(this.position.x,this.position.y,this.size.width,this.size.height);
         }
 
-        this.move = function (direction,speed){
-            if(speed && typeof speed == 'number' && speed > 0){
-                this.speed += speed;
-            }
-            if(direction && typeof direction == 'string' && direction != this.direction){
-                this.direction = direction;//Reverse the direction
+        this.move = function (args){
+            if(args && typeof args == 'object'){
+                if(args.position && typeof args.position == 'object'){
+                    if(args.position.y > this.position.y){//Told it to move up
+                        if(this.direction == 'down') this.direction = 'up';//Change the direction, if necessary
+                    }else{//Told it to move down
+                        if(this.direction == 'up') this.direction = 'down';//Change the direction, if necessary
+                    }
+                    this.position.y = args.position.y - 11;
+                }else{
+                    if(args.speed && typeof args.speed == 'number' && speed > 0){
+                        this.speed += args.speed;
+                    }
+                    if(args.direction && typeof args.direction == 'string' && args.direction != this.direction){
+                        this.direction = args.direction;//Reverse the direction
+                    }
+                }
             }
 
             //Update the position based on the direction
@@ -110,32 +124,29 @@ window.onload = function(){
     var Ball = function (name,color){
         this.color = color;
         this.name = name;
+        this.rad = random(9,9);
         this.position = {
-            rad: random(9,13),
-            x1: 13,//random(0,canvas.width),
-            y1: 13,//random(0,canvas.height),
-            x2: 26,//random(0,canvas.width),
-            y2: 26,//random(0,canvas.height),
+            x: null,
+            dx: null,
+            y: null,
+            dy: null,
         }
         //Perception
         this.touched = {
             bool: false,//This records the state if he has touched anything...wall or balls
             objects: [],//Array of all the object this player has touched
         }
-        this.directions = [,'inc','red'];//increase or reduce
+        this.directions = ['inc','red'];//increase or reduce
         //Set directions randomly
         this.direction = {
-            theta: Math.random() * Math.PI * 2 *1111,
-            x: this.directions[Math.floor(Math.random() * 2) + 1],
-            y: this.directions[Math.floor(Math.random() * 2) + 1]
+            theta: random(0,360) * Math.PI / 180,//Random angle less between 0 and 360 degrees converted to radians
+            x: this.directions.randItem(),
+            y: this.directions.randItem()
         }    
         this.calcTheta = function (){
-            var adj = Math.abs(this.position.x2 - this.position.x1),
-             opp = Math.abs(this.position.y2 - this.position.y1), 
-             hyp = this.position.rad + this.speed;
-            this.direction.theta = Math.atan2(this.position.y2,this.position.x2);
+            this.direction.theta = Math.atan(this.position.dy,this.position.dx);
         }
-        this.speed = 21//Math.floor(Math.random() * 5) + 3;
+        this.speed = random(19,19);
         this.decelerate = function(){
             if(this.speed > 0){
                 this.speed -= 9;
@@ -148,170 +159,129 @@ window.onload = function(){
             }
         }
         this.show = function (position){
-            console.log(this.speed,this.direction.theta)
+            if(this.position.x === null || this.position.y === null){
+                //Set the positions
+                this.position.x = random(this.rad, canvas.width - this.rad);
+                this.position.y = random(this.rad, canvas.height - this.rad);
+
+                //Show the ball
+                canvasContext.fillStyle = this.color;
+                canvasContext.beginPath();
+                canvasContext.arc(this.position.x,this.position.y,this.rad,0,Math.PI*2,true);
+                canvasContext.fill();
+                return
+            }
+            
             if(position && typeof position == 'object'){
                 this.position = position;//Update
             }
 
             /**
-             * Choose the direction
+             * Choose the direction, and the change in speed
+             * based on the object this ball interacts
              */
             var directionChanged = false;
             //Relative to players
             if(!directionChanged){
-                var player1 = Player.instances[0];
-                var player2 = Player.instances[1];
-                var touchedPlayer = {
-                    bool: false,
-                    who: {}
-                }
-                //Check if this is moving relatively to the right or to the left at this time, to 
-                //determine which player it will interact with
-                if(this.direction.x === 'inc'){//Moving right
-                    //Check if it is close to player
-                    var distanceFromPlayer = (canvas.width - player2.size.width) - (this.position.x2 + this.position.rad);
-                    if(distanceFromPlayer <= 0){
-                        if(player2.position.y <= this.position.y2 && this.position.y2 <= (player2.position.y + player2.size.height)){
-                            position.x1 = position.x2;//Update previous x cordinate
-                            position.x2 = (canvas.width - player2.size.width) - this.position.rad;//Adjust position
-                            touchedPlayer.bool = true;
-                            touchedPlayer.who = player2;
-                        }
-                        if(touchedPlayer.bool){
-                            this.direction.x = 'red';//toggle direction   
-                            directionChanged = true;  
+                var player;
+                var suposedX = this.position.x, suposedY = this.position.y;//initialize the suposed values on both cordinates, needed for speed change calculation
+                //Determine player to check interaction with
+                if(this.position.x > canvas.width / 2){//Right player
+                    player = Player.instances[1];
+                    if(this.position.x >= (canvas.width - player.size.width) - this.rad){//Touched player
+                        this.position.x = (canvas.width - player.size.width) - this.rad;//Adjust position
+                        if(this.direction.theta < (Math.PI / 2)){
+                            this.direction.theta = Math.PI - this.direction.theta;
+                        }else if(this.direction.theta > ((3 * Math.PI) / 2)){
+                            this.direction.theta = (3 * Math.PI) - this.direction.theta;
                         }
                     }
-                }else if(this.direction.x === 'red'){//Moving left
-                            //Check if it is close to player
-                    var distanceFromPlayer = (this.position.x2 - this.position.rad) - player1.size.width;
-                    
-                    if(distanceFromPlayer <= 0){
-                    if(player1.position.y <= this.position.y2 && this.position.y2 <= (player1.position.y + player1.size.height)){
-                        position.x1 = position.x2;//Update previous x cordinate
-                        position.x2 = player1.size.width + this.position.rad;//Adjust position
-                        touchedPlayer.bool = true;
-                            touchedPlayer.who = player1;
-                        }                   
+                }else{//Left player
+                    player = Player.instances[0];
+                    if(this.position.x <= this.rad + player.size.width){//Touched player
+                        this.position.x = this.rad + player.size.width;//Adjust position
+                        if(this.direction.theta <= Math.PI){
+                            this.direction.theta = Math.PI - this.direction.theta;
+                        }else if(this.direction.theta > Math.PI){
+                            this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                        }
                     }
-                    if(touchedPlayer.bool){
-                        this.direction.x = 'inc';//toggle direction   
-                        directionChanged = true;  
-                    }
-                }
-
-                if(touchedPlayer.bool){
-                    this.accelerate(touchedPlayer.who.speed);
                 }
             }
             //Relative to screen
             if(!directionChanged){//Adjust the postion so the player will not go off the screen, and change his direction if necessary
-                if(this.position.x2 <= this.position.rad){
-                    this.position.x2 = this.position.rad;//Adjust position
-                    directionChanged = true;  
-                    this.decelerate()//Any time a ball hits the wall its speed should reduce
-                    this.direction.x = 'inc';//Adjust the direction
+                //Moving side-ways
+                var suposedX = this.position.x, suposedY = this.position.y;//initialize the suposed values on both cordinates
+                if(this.position.x <= this.rad){//Left wall
+                    if(this.direction.theta <= Math.PI){
+                        this.direction.theta = Math.PI - this.direction.theta;
+                    }else if(this.direction.theta > Math.PI){
+                        this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                    }
+                    this.position.x = this.rad;//Adjust position
+                }else if(this.position.x >= canvas.width - this.rad){//Right wall
+                    this.position.x = canvas.width - this.rad;//Adjust position
+                    if(this.direction.theta < (Math.PI / 2)){
+                        this.direction.theta = Math.PI - this.direction.theta;
+                    }else if(this.direction.theta > ((3 * Math.PI) / 2)){
+                        this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                    }
                 }
-                if(this.position.x2 >= canvas.width - this.position.rad){
-                    this.position.x2 = canvas.width - this.position.rad;//Adjust position
-                    directionChanged = true;  
-                    this.decelerate()//Any time a ball hits the wall its speed should reduce
-                    this.direction.x = 'red';//Adjust the direction
+                //Moving up or down
+                if(this.position.y <= this.rad){//Up wall
+                    this.position.y = this.rad;//Adjust position
+                    this.direction.theta = (2 * Math.PI) - this.direction.theta;
+                }else if(this.position.y >= canvas.height - this.rad){//Down wall
+                    this.position.y = canvas.height - this.rad;//Adjust position
+                    this.direction.theta = (2 * Math.PI) - this.direction.theta;
                 }
-                if(this.position.y2 <= this.position.rad){
-                    this.position.y2 = this.position.rad;//Adjust position
-                    directionChanged = true;  
-                    this.decelerate()//Any time a ball hits the wall its speed should reduce
-                    this.direction.y = 'inc';//Adjust the direction
-                }
-                if(this.position.y2 >= canvas.height - this.position.rad){
-                    this.position.y2 = canvas.height - this.position.rad;//Adjust position
-                    directionChanged = true;  
-                    this.decelerate()//Any time a ball hits the wall its speed should reduce
-                    this.direction.y = 'red';//Adjust the direction
-                }
+                ///** Calculate speed change*/ and update the speed based on it's larger side
+                var awaySpeed = Math.sqrt(
+                    (suposedX - this.position.x)**2 + (suposedY - this.position.y)**2
+                ),
+                withinSpeed = this.speed - awaySpeed;
+                this.speed = (awaySpeed > withinSpeed) ? awaySpeed : withinSpeed;
             }      
 
-            if(directionChanged) this.calcTheta();
             canvasContext.fillStyle = this.color;
             canvasContext.beginPath()
-            canvasContext.arc(this.position.x2,this.position.y2,this.position.rad,0,Math.PI*2,true)
-            canvasContext.fill()
+            canvasContext.arc(this.position.x,this.position.y,this.rad,0,Math.PI*2)
+            canvasContext.fill();
+
             /*
             console.log((function(d){
-                return 1
-                if(d.x == 'inc' && d.y == 'inc') return 'rightDown'
-                if(d.x == 'inc' && d.y == 'red') return 'rightUp'
-                if(d.x == 'red' && d.y == 'red') return 'leftUp'
-                if(d.x == 'red' && d.y == 'inc') return 'leftDown'
-            }(this.direction)))*/
+                if(d.dx > 0 && d.dy > 0) return 'rightDown'
+                if(d.dx > 0 && d.dy < 0) return 'rightUp'
+                if(d.dx < 0 && d.dy < 0) return 'leftUp'
+                if(d.dx < 0 && d.dy > 0) return 'leftDown'
+                if(d.dx < 0) return 'left'
+                if(d.dx > 0) return 'right'
+                if(d.dy > 0) return 'Down'
+                if(d.dy < 0) return 'Up'
+            }(this.position)))*/
         }
 
         this.move = function (direction){//Direction will be an object with x and y properties be either neg or pos
-            var [dispX,dispY] = cartesian(this.position.rad + this.speed, this.direction.theta);//Calculate how far it should move on both cordinate based on the three variablesv
-            var position = this.position;//Clone the position property, this is done since the show() method will still use the previous value
+            if(this.position.x === null || this.position.y === null){
+                this.show();//Call show so it will decide the position
+                return;
+            }
+            var [dispX,dispY] = cartesian(this.speed, this.direction.theta);//Calculate how far it should move on both cordinate based on the three variablesv
+            
+            var [posX,posY] = [this.position.x,this.position.y];//Clone the position x and y property,.. we need this to calc dx and dy... this is done since the show() method will still use the previous value
             //Chose the direction
             if(direction){
-                switch(direction.x){//For x
-                    case 'inc':
-                        position.x1 = position.x2;//Update previous  x cordinate
-                        position.x2 += Math.abs(dispX);//Update current x cordinate
-                        break;
-                    case 'red':
-                        position.x1 = position.x2;//Update previous  x cordinate
-                        position.x2 -= Math.abs(dispX);//Update current x cordinate
-                        break;
-                    case 0: //Change nothing
-                        break;
-                    default://Use the previous case
-                        if(this.direction.x === 'inc'){
-                            position.x1 = position.x2;//Update previous  x cordinate
-                            position.x2 += Math.abs(dispX);//Update current x cordinate
-                        }else{
-                            position.x1 = position.x2;//Update previous  x cordinate
-                            position.x2 -= Math.abs(dispX);//Update current x cordinate
-                        }
-                }
-                switch(direction.y){//For y
-                    case 'inc':
-                        position.y1 = position.y2;//Update previous  x cordinate
-                        position.y2 += Math.abs(dispY);//Update current x cordinate
-                        break;
-                    case 'red':
-                        position.y1 = position.y2;//Update previous  x cordinate
-                        position.y2 -= Math.abs(dispY);//Update current x cordinate
-                        break;
-                    case 0: //Change nothing
-                        break;
-                    default://Use the previous case
-                        if(this.direction.y === 'inc'){
-                            position.y1 = position.y2;//Update previous  x cordinate
-                            position.y2 += Math.abs(dispY);//Update current x cordinate
-                        }else{
-                            position.y1 = position.y2;//Update previous  x cordinate
-                            position.y2 -= Math.abs(dispY);//Update current x cordinate
-                        }
-                }
-            }else{
-                if(this.direction.x === 'inc'){
-                    position.x1 = position.x2;//Update previous  x cordinate
-                    position.x2 += Math.abs(dispX);//Update current x cordinate
-                }else{
-                    position.x1 = position.x2;//Update previous  x cordinate
-                    position.x2 -= Math.abs(dispX);//Update current x cordinate
-                }
-                if(this.direction.y === 'inc'){
-                    position.y1 = position.y2;//Update previous  x cordinate
-                    position.y2 += Math.abs(dispY);//Update current x cordinate
-                }else{
-                    position.y1 = position.y2;//Update previous  x cordinate
-                    position.y2 -= Math.abs(dispY);//Update current x cordinate
-                }        
+                
             }
+            //Set the positions and the changes on the x and y cordinate
+            this.position.x += dispX;//Update current x cordinate
+            this.position.dx = this.position.x - posX ;//Update change on the x cordinate
 
-            //Ensure that the position is not off canvas
+            this.position.y += dispY;//Update current y cordinate
+            this.position.dy = this.position.y - posY ;//Update change on the x cordinate
+
             //Update the position
-            this.show(position)
+            this.show()
         }
 
         this.autoMove = function (){//Direction will be an object with x and y properties be either neg or pos
@@ -424,19 +394,18 @@ window.onload = function(){
         Ball.instances.length++;//Increase the length
     }
 
-
     //Init Balls
-    const colors = [,'white','blue','green','yellow','pink']
+    const colors = ['white','blue','green','yellow','pink']
     var totalBalls = 1;
     for(var i = 1;i <= totalBalls; i++){
         let ballName = 'ball' + i;
-    addBall(ballName,colors[random(1,colors.length - 1)]);
+        addBall(ballName,colors.randItem());
     }
    
     function addRandomBall(){
         var ballIndex = Ball.instances.length + 1;
         var ballName = 'ball' + ballIndex;
-        addBall(ballName,colors[random(1,colors.length - 1)]); 
+        addBall(ballName,colors.randItem()); 
     }
 
     function drawAll (){
@@ -452,13 +421,11 @@ window.onload = function(){
         });
             
         //Draw the players
-        function playerSpeed(){
-            return 3;
-        }
         Player.instances.forEach((player)=>{
-            player.move()
+            player.move({
+                //position: { y: Ball.instances.ball1.position.y + 31 - player.size.height}
+            })
         })
-        
     }
     
     function moveBalls(direction){
@@ -481,15 +448,9 @@ window.onload = function(){
             player.show()
         })
     }
-    /*
-        var direction = [,'up','down'];
-
-        player1.direction = direction[Math.floor(Math.random() * 2) + 1]
-        player2.direction = direction[Math.floor(Math.random() * 2) + 1]
-    */
     var draw = setInterval(function(){
         drawAll();          
-    },frameRate)
+    },1000 / framesPerSec)
 
     document.getElementById('moveBalls').addEventListener('click',()=>moveBalls(),true);
     document.getElementById('moveBallsUp').addEventListener('click',()=>moveBalls({x:0,y:'red'}),true);

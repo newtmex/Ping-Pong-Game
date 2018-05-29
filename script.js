@@ -1,4 +1,4 @@
-var canvasContext, ball, player1, player2, framesPerSec = 30;
+var canvasContext, ball, player1, player2, framesPerSec = .31;
 
 // Convert [x,y] coordinates to [r,theta] polar coordinates
 function polar(x,y) {
@@ -18,11 +18,16 @@ window.onload = function(){
 
     const canvas = document.getElementById('gameMain');
     canvasContext = canvas.getContext('2d');
-    const movement = document.getElementById('movement');
-    movementContext = movement.getContext('2d');
-    movementContext.fillStyle = 'black';
-    movementContext.fillRect(0,0,canvas.width,canvas.height);
-
+    function calculateMousePos(evt) {
+        var rect = canvas.getBoundingClientRect();
+        var root = document.documentElement;
+        var mouseX = evt.clientX - rect.left - root.scrollLeft;
+        var mouseY = evt.clientY - rect.top - root.scrollTop;
+        return {
+            x:mouseX,
+            y:mouseY
+        };
+    }
     function drawCanvas(){
         canvasContext.fillStyle = 'black';
         canvasContext.fillRect(0,0,canvas.width,canvas.height);
@@ -38,7 +43,7 @@ window.onload = function(){
             height: 70,
             width: 9
         }
-        this.speed = 20;
+        this.speed = 2;
         if(id === 2) {
             this.position = {
                 x: canvas.width - this.size.width,
@@ -94,7 +99,13 @@ window.onload = function(){
                     }else{//Told it to move down
                         if(this.direction == 'up') this.direction = 'down';//Change the direction, if necessary
                     }
-                    this.position.y = args.position.y - 11;
+                    //Clear his former location
+                    this.disappear()
+                    //Update speed
+                    this.speed = args.position.y - this.position.y;
+                    (this.speed < 0) ? this.direction = 'up' : this.direction = 'down';
+                    console.log(this.speed)
+
                 }else{
                     if(args.speed && typeof args.speed == 'number' && speed > 0){
                         this.speed += args.speed;
@@ -112,6 +123,12 @@ window.onload = function(){
             this.show();
         }
 
+        this.disappear = function (){
+            canvasContext.fillStyle = 'black';
+            canvasContext.fillRect(this.position.x,this.position.y,this.size.width,this.size.height);
+            console.log(this.speed)
+        }
+
         //Take record of all instances
         Player.instances.push(this)
     }
@@ -124,7 +141,7 @@ window.onload = function(){
     var Ball = function (name,color){
         this.color = color;
         this.name = name;
-        this.rad = random(9,9);
+        this.rad = random(15,45);
         this.position = {
             x: null,
             dx: null,
@@ -134,12 +151,12 @@ window.onload = function(){
         //Perception
         this.touched = {
             bool: false,//This records the state if he has touched anything...wall or balls
-            objects: [],//Array of all the object this player has touched
+            objects: [],//Array of all the objects this player has touched
         }
         this.directions = ['inc','red'];//increase or reduce
         //Set directions randomly
         this.direction = {
-            theta: random(0,360) * Math.PI / 180,//Random angle less between 0 and 360 degrees converted to radians
+            theta: random(0,180) * Math.PI / 180,//Random angle less between 0 and 360 degrees converted to radians
             x: this.directions.randItem(),
             y: this.directions.randItem()
         }    
@@ -188,24 +205,145 @@ window.onload = function(){
                 //Determine player to check interaction with
                 if(this.position.x > canvas.width / 2){//Right player
                     player = Player.instances[1];
-                    if(this.position.x >= (canvas.width - player.size.width) - this.rad){//Touched player
-                        this.position.x = (canvas.width - player.size.width) - this.rad;//Adjust position
-                        if(this.direction.theta < (Math.PI / 2)){
-                            this.direction.theta = Math.PI - this.direction.theta;
-                        }else if(this.direction.theta > ((3 * Math.PI) / 2)){
-                            this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                    if(this.position.y < player.position.y){//If above height range of player
+                        if(this.rad >= Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2)){//Touched player
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x))
+                            this.position.x = (canvas.width - player.size.width) - this.rad;//Adjust position
+                            //Change direction
+                            if(this.direction.theta < (Math.PI / 2)){
+                                this.direction.theta = Math.PI - this.direction.theta;
+                            }else if(this.direction.theta > ((3 * Math.PI) / 2)){
+                                this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                            }
+                            //Using parallelogram law of vectors, Adjust direction and speed
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x)),
+                                thetaChange = (thetaS - this.direction.theta) / 2,
+                                thetaResultant = thetaS - thetaChange,//The direction inmpacted on the ball by the player, based on the rSpeed below following parallelogram law of vectors
+                                lineVC = Math.sqrt((player.position.y - this.position.y)**2 + (player.position.x - this.position.x)**2),//The speed inmpacted on the ball by the player
+                                rSpeed = Math.sqrt(
+                                    this.speed**2 + lineVC**2 - (
+                                        2 * this.speed * lineVC * Math.cos(
+                                            Math.PI - thetaChange
+                                        )
+                                    )
+                                );
+                            this.speed = rSpeed;
+                            this.direction.theta = thetaResultant;
+
+                           // console.log('above right player @ ' + thetaS, Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2) )
+                        }
+                    }else if(player.position.y <= this.position.y && this.position.y <= (player.position.y + player.size.height)){//If within the height rnage of player
+                        if(this.position.x >= (canvas.width - player.size.width) - this.rad){//Touched player
+                            this.position.x = (canvas.width - player.size.width) - this.rad;//Adjust position
+                            if(this.direction.theta < (Math.PI / 2)){
+                                this.direction.theta = Math.PI - this.direction.theta;
+                            }else if(this.direction.theta > ((3 * Math.PI) / 2)){
+                                this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                            }
+                        }
+                        // console.log('within range of right player')
+                    }else if(this.position.y > (player.position.y + player.size.height)){//If below it
+                        if(this.rad >= Math.sqrt((player.position.x - this.position.x)**2 + ((player.position.y + player.size.height) - this.position.y)**2)){//Touched player
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x))
+                            this.position.x = (canvas.width - player.size.width) - this.rad;//Adjust position
+                            //Change direction
+                            if(this.direction.theta < (Math.PI / 2)){
+                                this.direction.theta = Math.PI - this.direction.theta;
+                            }else if(this.direction.theta > ((3 * Math.PI) / 2)){
+                                this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                            }
+                            //Using parallelogram law of vectors, Adjust direction and speed
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x)),
+                                thetaChange = (thetaS - this.direction.theta) / 2,
+                                thetaResultant = thetaS - thetaChange,//The direction inmpacted on the ball by the player, based on the rSpeed below following parallelogram law of vectors
+                                lineVC = Math.sqrt((player.position.y - this.position.y)**2 + (player.position.x - this.position.x)**2),//The speed inmpacted on the ball by the player
+                                rSpeed = Math.sqrt(
+                                    this.speed**2 + lineVC**2 - (
+                                        2 * this.speed * lineVC * Math.cos(
+                                            Math.PI - thetaChange
+                                        )
+                                    )
+                                );
+                            this.speed = rSpeed;
+                            this.direction.theta = thetaResultant;
+                            
+                           // console.log('below right player @ ' + thetaS, Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2) )
                         }
                     }
                 }else{//Left player
                     player = Player.instances[0];
-                    if(this.position.x <= this.rad + player.size.width){//Touched player
-                        this.position.x = this.rad + player.size.width;//Adjust position
-                        if(this.direction.theta <= Math.PI){
-                            this.direction.theta = Math.PI - this.direction.theta;
-                        }else if(this.direction.theta > Math.PI){
-                            this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                    if(this.position.y < player.position.y){//If above height range of player
+                        if(this.rad >= Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2)){//Touched player
+                            this.position.x = this.rad + player.size.width;//Adjust position
+                            //Change direction
+                            if(this.direction.theta <= Math.PI){
+                                this.direction.theta = Math.PI - this.direction.theta;
+                            }else if(this.direction.theta > Math.PI){
+                                this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                            }
+                            //Using parallelogram law of vectors, Adjust direction and speed
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x)),
+                                thetaChange = (thetaS - this.direction.theta) / 2,
+                                thetaResultant = thetaS - thetaChange,//The direction inmpacted on the ball by the player, based on the rSpeed below following parallelogram law of vectors
+                                lineVC = Math.sqrt((player.position.y - this.position.y)**2 + (player.position.x - this.position.x)**2),//The speed inmpacted on the ball by the player
+                                rSpeed = Math.sqrt(
+                                    this.speed**2 + lineVC**2 - (
+                                        2 * this.speed * lineVC * Math.cos(
+                                            Math.PI - thetaChange
+                                        )
+                                    )
+                                );
+                            this.speed = rSpeed;
+                            this.direction.theta = thetaResultant;
+                            
+                           // console.log('above left player @ ' + thetaS, Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2) )
+                        }
+                    }else if(player.position.y <= this.position.y && this.position.y <= (player.position.y + player.size.height)){//If within the height rnage of player
+                        if(this.position.x <= this.rad + player.size.width){//Touched player
+                            this.position.x = this.rad + player.size.width;//Adjust position
+                            if(this.direction.theta <= Math.PI){
+                                this.direction.theta = Math.PI - this.direction.theta;
+                            }else if(this.direction.theta > Math.PI){
+                                this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                            }
+                        }
+                        // console.log('within range of left player')
+                    }else{//If below it
+                        if(this.rad >= Math.sqrt((player.position.x - this.position.x)**2 + ((player.position.y + player.size.height) - this.position.y)**2)){//Touched player
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x))
+                            this.position.x = this.rad + player.size.width;//Adjust position
+                            //Change direction
+                            if(this.direction.theta <= Math.PI){
+                                this.direction.theta = Math.PI - this.direction.theta;
+                            }else if(this.direction.theta > Math.PI){
+                                this.direction.theta = (3 * Math.PI) - this.direction.theta;
+                            }
+                            //Using parallelogram law of vectors, Adjust direction and speed
+                            var thetaS = Math.atan((player.position.y - this.position.y) / (player.position.x - this.position.x)),
+                                thetaChange = (thetaS - this.direction.theta) / 2,
+                                thetaResultant = thetaS - thetaChange,//The direction inmpacted on the ball by the player, based on the rSpeed below following parallelogram law of vectors
+                                lineVC = Math.sqrt((player.position.y - this.position.y)**2 + (player.position.x - this.position.x)**2),//The speed inmpacted on the ball by the player
+                                rSpeed = Math.sqrt(
+                                    this.speed**2 + lineVC**2 - (
+                                        2 * this.speed * lineVC * Math.cos(
+                                            Math.PI - thetaChange
+                                        )
+                                    )
+                                );
+                            this.speed = rSpeed;
+                            this.direction.theta = thetaResultant;
+                            
+                           // console.log('below left player @ ' + thetaS, Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2) )
                         }
                     }
+                }
+                //Moving at what direction
+                if(this.position.dx < 0){//Moving left
+                    player = Player.instances[0];
+                    //console.log(this.position.dx, Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2))                
+                }else{//moing right
+                    player = Player.instances[1];
+                    //console.log(this.position.dx, Math.sqrt((player.position.x - this.position.x)**2 + (player.position.y - this.position.y)**2))                    
                 }
             }
             //Relative to screen
@@ -240,7 +378,7 @@ window.onload = function(){
                     (suposedX - this.position.x)**2 + (suposedY - this.position.y)**2
                 ),
                 withinSpeed = this.speed - awaySpeed;
-                this.speed = (awaySpeed > withinSpeed) ? awaySpeed : withinSpeed;
+                //this.speed = (awaySpeed > withinSpeed) ? awaySpeed : withinSpeed;
             }      
 
             canvasContext.fillStyle = this.color;
@@ -412,7 +550,6 @@ window.onload = function(){
         /** Place the show() method and every draw instance here, so that they can
          *  overwrite their previous state
          */
-    
         //Draw the screen
         drawCanvas()
         //Draw the balls˝
@@ -420,14 +557,28 @@ window.onload = function(){
             ball.move()
         });
             
-        //Draw the players
+        //Show the players
         Player.instances.forEach((player)=>{
-            player.move({
-                //position: { y: Ball.instances.ball1.position.y + 31 - player.size.height}
-            })
+            player.show()
         })
+       // console.log(Ball.instances.ball1.position.y - yer.position.y)
     }
     
+	canvas.addEventListener('mousemove', (evt) => {
+        var mousePos = calculateMousePos(evt);
+        var player;
+        //Player to move
+        if(mousePos.x > canvas.width / 2){//Right player
+            player = Player.instances[1]
+
+        }else{//Left player
+            player = Player.instances[0]
+        }
+
+        var newPosition = {y: mousePos.y - (player.size.height / 2), }
+        player.move({position: newPosition})
+    });
+
     function moveBalls(direction){
         canvasContext.fillStyle = 'black';
         canvasContext.fillRect(0,0,canvas.width,canvas.height);
@@ -458,6 +609,3 @@ window.onload = function(){
 
     document.getElementById('addRandomBall').addEventListener('click',()=>addRandomBall(),true);
 }
-
- 
-

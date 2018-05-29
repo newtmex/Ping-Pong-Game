@@ -1,4 +1,4 @@
-var canvasContext, ball, player1, player2, framesPerSec = .31;
+var canvasContext, ball, player1, player2, framesPerSec = 11122.31;
 
 // Convert [x,y] coordinates to [r,theta] polar coordinates
 function polar(x,y) {
@@ -18,6 +18,7 @@ window.onload = function(){
 
     const canvas = document.getElementById('gameMain');
     canvasContext = canvas.getContext('2d');
+    var gameOn = true
     function calculateMousePos(evt) {
         var rect = canvas.getBoundingClientRect();
         var root = document.documentElement;
@@ -40,8 +41,8 @@ window.onload = function(){
         this.color = 'red';
         //Physical properties
         this.size = {
-            height: 70,
-            width: 9
+            height: 195,
+            width: 19
         }
         this.speed = 2;
         if(id === 2) {
@@ -80,10 +81,11 @@ window.onload = function(){
             //Adjust the postion so the player will not go off the screen, and change his direction if necessary
             if(this.position.y <= 0){
                 this.position.y = 0;//Adjust position
+                this.speed = 0;//Reset speed
                 this.direction = 'down';//Adjust the direction
-            }
-            if(this.position.y >= canvas.height - this.size.height){
+            }else if(this.position.y >= canvas.height - this.size.height){
                 this.position.y = canvas.height - this.size.height;//Adjust position
+                this.speed = 0;//Reset speed
                 this.direction = 'up';//Adjust the direction
             }
 
@@ -104,8 +106,6 @@ window.onload = function(){
                     //Update speed
                     this.speed = args.position.y - this.position.y;
                     (this.speed < 0) ? this.direction = 'up' : this.direction = 'down';
-                    console.log(this.speed)
-
                 }else{
                     if(args.speed && typeof args.speed == 'number' && speed > 0){
                         this.speed += args.speed;
@@ -121,6 +121,7 @@ window.onload = function(){
             if(this.direction === 'down') this.position.y += Math.abs(this.speed);
 
             this.show();
+            console.log(this.speed)
         }
 
         this.disappear = function (){
@@ -141,12 +142,12 @@ window.onload = function(){
     var Ball = function (name,color){
         this.color = color;
         this.name = name;
-        this.rad = random(15,45);
+        this.rad = random(10,15);
         this.position = {
-            x: null,
-            dx: null,
-            y: null,
-            dy: null,
+            x: canvas.width / 2,
+            dx: 0,
+            y: canvas.height / 2,
+            dy: 0,
         }
         //Perception
         this.touched = {
@@ -156,7 +157,7 @@ window.onload = function(){
         this.directions = ['inc','red'];//increase or reduce
         //Set directions randomly
         this.direction = {
-            theta: random(0,180) * Math.PI / 180,//Random angle less between 0 and 360 degrees converted to radians
+            theta: random(0,360) * Math.PI / 180,//Random angle less between 0 and 360 degrees converted to radians
             x: this.directions.randItem(),
             y: this.directions.randItem()
         }    
@@ -351,19 +352,22 @@ window.onload = function(){
                 //Moving side-ways
                 var suposedX = this.position.x, suposedY = this.position.y;//initialize the suposed values on both cordinates
                 if(this.position.x <= this.rad){//Left wall
+                    /*
                     if(this.direction.theta <= Math.PI){
                         this.direction.theta = Math.PI - this.direction.theta;
                     }else if(this.direction.theta > Math.PI){
                         this.direction.theta = (3 * Math.PI) - this.direction.theta;
-                    }
+                    }*/
                     this.position.x = this.rad;//Adjust position
+                    gameOn = false
                 }else if(this.position.x >= canvas.width - this.rad){//Right wall
-                    this.position.x = canvas.width - this.rad;//Adjust position
+                    /*
                     if(this.direction.theta < (Math.PI / 2)){
                         this.direction.theta = Math.PI - this.direction.theta;
                     }else if(this.direction.theta > ((3 * Math.PI) / 2)){
                         this.direction.theta = (3 * Math.PI) - this.direction.theta;
-                    }
+                    }*/
+                    gameOn = false
                 }
                 //Moving up or down
                 if(this.position.y <= this.rad){//Up wall
@@ -552,15 +556,26 @@ window.onload = function(){
          */
         //Draw the screen
         drawCanvas()
-        //Draw the balls˝
-        Ball.instances.forEach((ball)=>{
-            ball.move()
-        });
-            
-        //Show the players
-        Player.instances.forEach((player)=>{
-            player.show()
-        })
+        if(gameOn){
+            //Draw the balls˝
+            Ball.instances.forEach((ball)=>{
+                ball.move()
+            });
+            //Show the players
+            Player.instances.forEach((player)=>{
+                player.show()
+            })
+        }else{
+            //Draw the balls˝
+            Ball.instances.forEach((ball)=>{
+                ball.show()
+            });
+            //Show the players with different color
+            Player.instances.forEach((player)=>{
+                player.color = 'pink'
+                player.show()
+            })
+        }
        // console.log(Ball.instances.ball1.position.y - yer.position.y)
     }
     

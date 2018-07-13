@@ -14,7 +14,7 @@ function random(start,end){//Returns a random number from start to end, both inc
 Array.prototype.randItem = function (){
     return this[random(0,this.length - 1)]
 }
-window.onload = function(){
+
 
     const canvas = document.getElementById('gameMain');
     canvasContext = canvas.getContext('2d');
@@ -517,12 +517,19 @@ window.onload = function(){
             //Update the position
             this.show(position)
         }
+        Ball.instances.push(this);
+
+        /*
+        Ball.instances[this.name] = this;
+        Ball.instances.length++;//Increase the length
+        */
     }
+    Ball.instances = [];//This will hold all the balls formed
+    /*
     Ball.instances = {};//This will hold all the balls formed
     Object.defineProperties(Ball.instances,{
         length: {
             value: 0,
-            writable: true
         },
         forEach: {
             value: function(f){
@@ -530,10 +537,10 @@ window.onload = function(){
             },
         },
     })
+    */
 
     function addBall(name,color){
-        Ball.instances[name] = new Ball(name,color);//Add the member
-        Ball.instances.length++;//Increase the length
+        new Ball(name,color);//Add the member
     }
 
     //Init Balls
@@ -614,13 +621,11 @@ window.onload = function(){
             player.show()
         })
     }
-    var draw = setInterval(function(){
-        drawAll();          
-    },1000 / framesPerSec)
+    var draw = setInterval(drawAll,1000 / framesPerSec)
 
     document.getElementById('moveBalls').addEventListener('click',()=>moveBalls(),true);
     document.getElementById('moveBallsUp').addEventListener('click',()=>moveBalls({x:0,y:'red'}),true);
     document.getElementById('moveBallsDown').addEventListener('click',()=>moveBalls({x:0,y:'inc'}));
 
     document.getElementById('addRandomBall').addEventListener('click',()=>addRandomBall(),true);
-}
+
